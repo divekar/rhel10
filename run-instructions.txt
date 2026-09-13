@@ -1,0 +1,36 @@
+1. Build the image (same as before):
+   docker build -t rhel10-course .
+
+2. Run it as a background "machine" instead of an interactive shell.
+   Docker (unlike podman) needs --privileged for systemd to have the
+   access it wants, plus cgroup and tmpfs mounts:
+
+   docker run -d --name rhel10 \
+     --privileged \
+     --cgroupns=host \
+     -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+     --tmpfs /tmp \
+     --tmpfs /run \
+     --tmpfs /run/lock \
+     rhel10-course
+
+3. Get your shell (this replaces "docker run -it ... bash"):
+   docker exec -it rhel10 bash
+
+4. Confirm it worked:
+   hostnamectl
+   systemctl status
+   (systemctl status should show systemd as PID 1, not an error)
+
+Stopping/restarting:
+   docker stop rhel10   # sends SIGRTMIN+3, systemd shuts down cleanly
+   docker start rhel10
+   docker exec -it rhel10 bash
+
+If hostnamectl still errors:
+- Check `docker logs rhel10` for systemd startup errors.
+- If your host uses cgroup v1 instead of v2, drop --cgroupns=host and
+  try again — the right flag combination varies a bit by Docker version
+  and host OS (this is the most fragile part of running systemd in
+  plain Docker; podman's `--systemd=always` handles this automatically
+  if you ever have podman available instead).
